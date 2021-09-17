@@ -1,0 +1,2 @@
+
+first5.csv saved with TCS.NS, RCOM.BO, IDEA.BO, NTCIND.BO, ADANIENT.NS stocks for period 2021-06-17 00:00:00 to 2021-09-17 00:00:00
