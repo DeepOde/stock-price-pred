@@ -22,6 +22,7 @@ def get_from_config(config=None, configfile=None, savefile=None):
                          threads=True)
 
     df = df.stack(level=0).rename_axis(['Date', 'Ticker']).reset_index(level=1)
+    # df.set_index('Date', inplace=True)
     if savefile is not None:
         df.to_csv(savefile)
         print('Saved '+savefile)
