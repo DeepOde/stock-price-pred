@@ -5,6 +5,7 @@ from selenium.common.exceptions import NoSuchElementException
 import csv
 from datetime import datetime, timedelta
 import pandas as pd
+from sklearn.utils import indices_to_mask
 
 
 def get_sectoral_index(index, launch_date, csvfile=None):
@@ -50,23 +51,27 @@ def get_sectoral_index(index, launch_date, csvfile=None):
 
 
 if __name__ == "__main__":
+    # indices_launch_date = {
+    #     "NIFTY AUTO" : "2004-01-01",
+    #     "NIFTY BANK" : "2000-01-01",
+    #     "NIFTY CONSR DURBL" : "2005-04-01",
+    #     "NIFTY FIN SERVICE" : "2004-01-01",
+    #     "NIFTY FINSRV25 50" : "2004-01-01",
+    #     "NIFTY FINANCIAL SERVICES EX-BANK": "2005-04-01",
+    #     "NIFTY FMCG" : "1996-01-01",
+    #     "NIFTY HEALTHCARE" : "2004-04-01",
+    #     "NIFTY IT" : "1996-01-01",
+    #     "NIFTY MEDIA" : "2005-12-30",
+    #     "NIFTY METAL" : "2004-01-01",
+    #     "NIFTY OIL AND GAS" : "2005-04-01",
+    #     "NIFTY PHARMA" : "2001-01-01",
+    #     "NIFTY PVT BANK" : "2004-05-01",
+    #     "NIFTY PSU BANK" : "2004-01-01",
+    #     "NIFTY REALTY" : "2006-12-29",
+    # }
+
     indices_launch_date = {
-        "NIFTY AUTO" : "2004-01-01",
-        "NIFTY BANK" : "2000-01-01",
-        "NIFTY CONSR DURBL" : "2005-04-01",
-        "NIFTY FIN SERVICE" : "2004-01-01",
-        "NIFTY FINSRV25 50" : "2004-01-01",
-        "NIFTY FINANCIAL SERVICES EX-BANK": "2005-04-01",
-        "NIFTY FMCG" : "1996-01-01",
-        "NIFTY HEALTHCARE" : "2004-04-01",
-        "NIFTY IT" : "1996-01-01",
-        "NIFTY MEDIA" : "2005-12-30",
-        "NIFTY METAL" : "2004-01-01",
-        "NIFTY OIL AND GAS" : "2005-04-01",
-        "NIFTY PHARMA" : "2001-01-01",
-        "NIFTY PVT BANK" : "2004-05-01",
-        "NIFTY PSU BANK" : "2004-01-01",
-        "NIFTY REALTY" : "2006-12-29",
+        "NIFTY 50" : "1997-04-21"
     }
 
     for index, launch_date in indices_launch_date.items():
