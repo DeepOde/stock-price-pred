@@ -10,7 +10,6 @@
 
 # In[10]:
 
-
 import os
 import pandas as pd
 import torch
@@ -22,6 +21,7 @@ import pickle
 import datetime
 import math
 import csv
+from sklearn.model_selection import train_test_split
 
 
 # In[11]:
@@ -456,6 +456,95 @@ class NeuralNetwork(nn.Module):
 # In[14]:
 
 
+def cross_validate(dataloader, model, loss_fn, optimizer, test_size):
+    train_mse_record = []
+    train_mape_record = []
+    train_weights = []
+
+    test_mse_record = []
+    test_mape_record = []
+    test_weights = []
+
+
+    for i, sample in enumerate(dataloader):
+        swdf, mainstream, index, y_act = sample
+        swdf, mainstream, index, y_act = swdf.float(), mainstream.float(), index.float(), y_act.float()
+        swdf_tr, swdf_ts, mainstream_tr, mainstream_ts, index_tr, index_ts, y_act_tr, y_act_ts = train_test_split(swdf, mainstream, index, y_act, test_size=test_size)
+        pred = model(swdf_tr, mainstream_tr, index_tr, dataloader.dataset.nP, dataloader.dataset.nN)
+        loss = loss_fn(pred, y_act_tr)
+        mape = torch.mean((torch.abs((y_act_tr - pred) / y_act_tr)) * 100)
+        
+        # Backpropagation
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        train_mse_record.append(loss.item())
+        train_mape_record.append(mape.item())
+        train_weights.append(len(swdf_tr))
+
+        # Evaluation
+        model.eval()
+        with torch.no_grad():
+            pred = model(swdf_ts, mainstream_ts, index_ts, dataloader.dataset.nP, dataloader.dataset.nN)
+            loss = loss_fn(pred, y_act_ts)
+            mape = torch.mean((torch.abs((y_act_ts - pred) / y_act_ts)) * 100)
+            test_mse_record.append(loss.item())
+            test_mape_record.append(mape.item())
+            test_weights.append(len(swdf_ts))
+        
+    return np.average(train_mse_record, weights=train_weights), np.average(train_mape_record, weights=train_weights), np.average(test_mse_record, weights=test_weights), np.average(test_mape_record, weights=test_weights)
+
+
+def eval_cv(dataset_path, batch_size, keep_features, hidden_sz1, hidden_sz2, hidden_sz_lin1, hidden_sz_lin2, hidden_sz_lin3,
+                  learning_rate, epochs, clip_gradients=False):
+    
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using {device} device")
+    dataset = load_NSEDataset(dataset_path)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    nP, nN = dataloader.dataset.nP, dataloader.dataset.nN 
+
+    model = NeuralNetwork(keep_features=keep_features, hidden_sz1=hidden_sz1, hidden_sz2=hidden_sz2, 
+    hidden_sz_lin1=hidden_sz_lin1, hidden_sz_lin2=hidden_sz_lin2, hidden_sz_lin3=hidden_sz_lin3, nP=nP, nN=nN).to(device)
+    optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate)
+    loss_fn = nn.MSELoss()
+    
+    if clip_gradients:
+        for p in model.parameters():
+            p.register_hook(lambda grad: torch.clamp(grad, -50, 50))
+
+    mse_tr_epochs = []
+    mape_tr_epochs = []
+    mse_ts_epochs = []
+    mape_ts_epochs = []
+
+    for i_epoch in range(epochs):
+        mse_tr, mape_tr, mse_ts, mape_ts = cross_validate(dataloader, model, loss_fn, optimizer, test_size=0.2)
+        mse_tr_epochs.append(mse_tr)
+        mape_tr_epochs.append(mape_tr)
+        mse_ts_epochs.append(mse_ts)
+        mape_ts_epochs.append(mape_ts)
+
+        
+    print("Cross Validation Completed for {}".format(dataset_path))
+    
+    min_mse_tr = min(mse_tr_epochs)
+    min_mse_ts = min(mse_ts_epochs)
+    min_mape_tr = min(mape_tr_epochs)
+    min_mape_ts = min(mape_ts_epochs)
+
+    last_mse_tr = mse_tr_epochs[-1]
+    last_mse_ts = mse_ts_epochs[-1]
+    last_mape_tr = mape_tr_epochs[-1]
+    last_mape_ts = mape_ts_epochs[-1]
+
+    with open('results_cv.csv', 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile, delimiter=',')
+        writer.writerow([datetime.datetime.now(), last_mse_tr, last_mse_ts, last_mape_tr, last_mape_ts, min_mse_tr, min_mse_ts, min_mape_ts, min_mape_ts, nP, nN, epochs, learning_rate, dataset_path])
+        
+    print("Results file updated.")
+ 
+
 def train(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
     mse_record = []
@@ -565,24 +654,27 @@ def train_and_test(train_dataset_path, test_datset_path, batch_size, keep_featur
 
 for nP in [2, 4, 8, 10, 15, 20, 50, 100, 120, 166]:
     nN = nP
+    # nP = 10
+    # nN = 10
     ohlcv_dir = 'data_collection/ohlcv_data'
     target_ticker = 'ITC.NS'
     target_ticker_file = 'ohlcv_fmcg.csv'
     len_window = 10
     len_corr_traceback = 20
-    nP = 10
-    nN = 10
     keep_feat = 'o'
-    train_start_date = '2017-01-01'
-    train_end_date = None
+    # train_start_date = '2017-01-01'
+    # train_end_date = None
+    
+    start_date = '2017-01-01'
+    end_date = None 
     # For predictions to start from day i (2021-06-01), 
     # i should be (len_corr_traceback)th day in the test_dataloader.
-    test_start_date = '2021-05-13'
-    test_end_date = None
+    # test_start_date = '2021-05-13'
+    # test_end_date = None
     normalize = 'min-max'
     # normalize = None
 
-    train_dataset = NSEDataset(ohlcv_dir=ohlcv_dir, 
+    dataset = NSEDataset(ohlcv_dir=ohlcv_dir, 
                          target_ticker=target_ticker, 
                          target_ticker_file=target_ticker_file, 
                          len_window=len_window,
@@ -590,33 +682,28 @@ for nP in [2, 4, 8, 10, 15, 20, 50, 100, 120, 166]:
                          nP=nP,
                          nN=nN, 
                          keep_feat=keep_feat, 
-                         start_date=train_start_date,
-                         end_date=train_end_date,
+                         start_date=start_date,
+                         end_date=end_date,
                          normalize=normalize)
 
-    test_dataset = NSEDataset(ohlcv_dir=ohlcv_dir, 
-                         target_ticker=target_ticker, 
-                         target_ticker_file=target_ticker_file, 
-                         len_window=len_window,
-                         len_corr_traceback=len_corr_traceback, 
-                         nP=nP,
-                         nN=nN, 
-                         keep_feat=keep_feat, 
-                         start_date=test_start_date,
-                         end_date=test_end_date,
-                         normalize=normalize)
+    # test_dataset = NSEDataset(ohlcv_dir=ohlcv_dir, 
+    #                      target_ticker=target_ticker, 
+    #                      target_ticker_file=target_ticker_file, 
+    #                      len_window=len_window,
+    #                      len_corr_traceback=len_corr_traceback, 
+    #                      nP=nP,
+    #                      nN=nN, 
+    #                      keep_feat=keep_feat, 
+    #                      start_date=test_start_date,
+    #                      end_date=test_end_date,
+    #                      normalize=normalize)
 
-    train_end_date_str = train_end_date[:7] if train_end_date is not None else 'full'
-    test_end_date_str = test_end_date[:7] if test_end_date is not None else 'full'
+    end_date_str = end_date[:7] if end_date is not None else 'full'
 
-    train_dataset_path = 'data_collection/pickled_datasets/{}_Normalized_{}_{}_{}_w{}_t{}_p{}_n{}_{}.pkl'.format(
-    normalize, target_ticker[:-3], train_start_date[:7], train_end_date_str, len_window, len_corr_traceback, nP, nN, keep_feat)
+    dataset_path = 'data_collection/pickled_datasets/{}_Normalized_{}_{}_{}_w{}_t{}_p{}_n{}_{}.pkl'.format(
+    normalize, target_ticker[:-3], start_date[:7], end_date_str, len_window, len_corr_traceback, nP, nN, keep_feat)
 
-    test_dataset_path = 'data_collection/pickled_datasets/{}_Normalized_{}_{}_{}_w{}_t{}_p{}_n{}_{}.pkl'.format(
-    normalize, target_ticker[:-3], test_start_date[:7], test_end_date_str, len_window, len_corr_traceback, nP, nN, keep_feat)
-
-    save_NSEDataset(train_dataset, train_dataset_path)
-    save_NSEDataset(test_dataset, test_dataset_path)
+    save_NSEDataset(dataset, dataset_path)
 
     batch_size = 512
     keep_features = 'o'
@@ -628,9 +715,12 @@ for nP in [2, 4, 8, 10, 15, 20, 50, 100, 120, 166]:
     learning_rate = 0.001
     epochs = 20
 
-    train_and_test(train_dataset_path, test_dataset_path, batch_size, keep_features, 
-                      hidden_sz1, hidden_sz2, hidden_sz_lin1, hidden_sz_lin2, hidden_sz_lin3,
-                      learning_rate, epochs, clip_gradients=False);
+    eval_cv(dataset_path, batch_size, keep_features, hidden_sz1, hidden_sz2, hidden_sz_lin1, hidden_sz_lin2, hidden_sz_lin3,
+    learning_rate, epochs, clip_gradients=False)
+
+    # train_and_test(train_dataset_path, test_dataset_path, batch_size, keep_features, 
+    #                   hidden_sz1, hidden_sz2, hidden_sz_lin1, hidden_sz_lin2, hidden_sz_lin3,
+    #                   learning_rate, epochs, clip_gradients=False)
 
 
 # In[ ]:
@@ -641,3 +731,5 @@ for nP in [2, 4, 8, 10, 15, 20, 50, 100, 120, 166]:
 #                   hidden_sz1, hidden_sz2, hidden_sz_lin1, hidden_sz_lin2, hidden_sz_lin3,
 #                   learning_rate, epochs, clip_gradients=False);
 
+# eval_cv(dataset_path, batch_size, keep_features, hidden_sz1, hidden_sz2, hidden_sz_lin1, hidden_sz_lin2, hidden_sz_lin3,
+                #   learning_rate, epochs, clip_gradients=False):
