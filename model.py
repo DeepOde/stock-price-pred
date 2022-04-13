@@ -15,6 +15,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torch import nn
+import torch.nn.functional as torchf
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view as sliding_window_view
 import pickle
@@ -22,6 +23,7 @@ import datetime
 import math
 import csv
 from sklearn.model_selection import train_test_split
+import itertools
 
 
 # In[11]:
@@ -30,7 +32,14 @@ from sklearn.model_selection import train_test_split
 class NSEDataset(Dataset):
     def __init__(self, ohlcv_dir, target_ticker, target_ticker_file, len_window, len_corr_traceback, nP, nN, 
     keep_tickers=None, ohlcv_prefix='', ohlcv_sufix='', ohlcv_files=None, start_date=None, end_date=None,
-    target_feat='c', keep_feat='ohlcva', normalize='min-max'):
+    target_feat='c', keep_feat='ohlcva', normalize='min-max', normalize_target=False, corr_control=None, corr_threshold=None):
+        '''
+        corr_control : None - No control
+                    'threshold' - Upper and lower threshold (corr_threshold must be specified.
+                    'prop' - Weightage proportional to absolute correlation is given.
+
+        corr_threshold : dict with two keys, p_threshold and n_threshold (not absolute). 
+        '''
 
         feat_name_map = {
             'o' : 'Open', 
@@ -47,6 +56,10 @@ class NSEDataset(Dataset):
         self.target_feat = target_feat
         self.keep_feat = keep_feat
         self.start_date, self.end_date = start_date, end_date
+        if corr_control == 'threshold' and corr_threshold is None:
+            raise ValueError("corr_threshold must be specified for corr_control = 'threshold.")
+        self.corr_control = corr_control
+        self.corr_threshold = corr_threshold
 
         if ohlcv_files is not None:
             ohlcv_files = set(ohlcv_files)
@@ -110,24 +123,15 @@ class NSEDataset(Dataset):
         self.unshifted_target = self.mainstream_df.loc[:, target_feat_name]
         self.target = self.unshifted_target.shift(periods=-1).iloc[:-1]
 
-        # Min-max normalizing.
-        if normalize == 'min-max':
-            self.target = (self.target - self.target.min())/(self.target.max() - self.target.min())
-            self.unshifted_target = (self.unshifted_target - self.unshifted_target.min())/(self.unshifted_target.max() - self.unshifted_target.min())
-
         # To account for absence of target for last row.
         self.df = self.df.iloc[:-1, :]  
         self.mainstream_df = self.mainstream_df.iloc[:-1, :]
-        
-        # Min-max Normalizing
-        if normalize == 'min-max':
-            self.df = (self.df-self.df.min())/(self.df.max()-self.df.min())
-            self.mainstream_df = (self.mainstream_df-self.mainstream_df.min())/(self.mainstream_df.max()-self.mainstream_df.min())
-        
+
         drop_features = set(feat_name_map.keys()).difference({feat for feat in keep_feat})
         for feat in drop_features:
             self.df.drop(self.df.filter(regex='_{}$'.format(feat_name_map[feat])).columns.tolist(), axis=1, inplace=True)
             self.mainstream_df.drop(self.mainstream_df.filter(regex='_{}$'.format(feat_name_map[feat])).columns.tolist(), axis=1, inplace=True)
+
 
         # For i_end, data of [i_end - (len_corr_traceback) : i_end] (py notation)
         # is needed to calculate correlation, basis on which data of 
@@ -137,14 +141,18 @@ class NSEDataset(Dataset):
         self.min_chosen_p = float('inf')
         self.max_chosen_n = float('-inf')
         self.swdf = []
+        self.swcorr = []
         for i_end in range(len_corr_traceback, len(self.df)+1):
-            self.swdf.append(self.get_high_corr(self.unshifted_target.iloc[i_end-len_corr_traceback:i_end], 
-            self.df.iloc[i_end-len_corr_traceback:i_end, :], len_window, nP, nN))
+            newrow, corrrow = self.get_high_corr(self.unshifted_target.iloc[i_end-len_corr_traceback:i_end], 
+            self.df.iloc[i_end-len_corr_traceback:i_end, :], len_window, nP, nN)
+            self.swdf.append(newrow)
+            self.swcorr.append(corrrow)
             
         # self.swdf = np.array(self.swdf).reshape(len(self.swdf), self.len_window, -1)
         self.swdf = np.array(self.swdf)
+        self.swcorr = np.array(self.swcorr)
         self.swdf = pd.DataFrame(self.swdf).fillna(method='ffill').to_numpy()
-        
+         
         # if earlier self.df.shape was (6(n+1), c), it should now be
         # (n, c), mainstream_df.shape and index_data_df should be (n, 1) and swdf.shape
         # should be (n-lct+1, lw*(nP+nN)).
@@ -180,13 +188,20 @@ class NSEDataset(Dataset):
         self.index_data_df.set_index(['Date'], inplace=True)
         self.index_data_df = self.index_data_df.iloc[i_start:i_end]
 
-        # Min-max normalizing.
-        if normalize == 'min-max':
-            self.index_data_df=(self.index_data_df-self.index_data_df.min())/(self.index_data_df.max()-self.index_data_df.min())
-
         self.index_data_df = pd.DataFrame(self.index_data_df.loc[:, 'Close'])
         self.index_data_df = self.index_data_df.reset_index().merge(
     self.df.reset_index()['Date'], how='inner', on='Date').set_index('Date')
+        
+        # Min-max normalizing.
+        if normalize == 'min-max':
+            self.index_data_df=(self.index_data_df-self.index_data_df.min())/(self.index_data_df.max()-self.index_data_df.min())
+            self.swdf = (self.swdf-self.swdf.min())/(self.swdf.max()-self.swdf.min())
+            self.mainstream_df = (self.mainstream_df-self.mainstream_df.min())/(self.mainstream_df.max()-self.mainstream_df.min())
+            self.df = (self.df-self.df.min())/(self.df.max()-self.df.min())
+            if normalize_target:
+                self.target = (self.target - self.target.min())/(self.target.max() - self.target.min())
+                self.unshifted_target = (self.unshifted_target - self.unshifted_target.min())/(self.unshifted_target.max() - self.unshifted_target.min())
+        
 
         print("Dataset created for {}".format(target_ticker))
 
@@ -200,7 +215,9 @@ class NSEDataset(Dataset):
         assert not n_best.isna().any()        
         newrow = candidates.iloc[-len_window:, candidates.columns.get_indexer(p_best.index)].melt()['value'].tolist()
         newrow.extend(candidates.iloc[-len_window:, candidates.columns.get_indexer(n_best.index)].melt()['value'].tolist())
-        return newrow
+        corrrow = p_best.tolist() + n_best.tolist()
+        return newrow, corrrow
+
 
     def __len__(self):
         return len(self.swdf)
@@ -211,6 +228,7 @@ class NSEDataset(Dataset):
         # index_data_df[lct-lw + i : lct + i] flattened (py notation) should be accessed.
         
         return (self.swdf[idx, :].reshape(self.len_window, -1), 
+        self.swcorr[idx, :],
         self.mainstream_df.iloc[self.len_corr_traceback-self.len_window+idx : self.len_corr_traceback+idx].to_numpy(), 
         self.index_data_df.iloc[self.len_corr_traceback-self.len_window+idx : self.len_corr_traceback+idx].to_numpy(),
         self.target[self.len_corr_traceback+idx-1]
@@ -419,26 +437,47 @@ class NeuralNetwork(nn.Module):
         )
         
 
-    def forward(self, swdf, mainstream, index, nP, nN):
+    def forward(self, swdf, corr, mainstream, index, nP, nN, corr_control=None, corr_threshold=None):
         
         # Normalizing using nn.BatchNorm1d.
         # swdf = self.swdf_norm(swdf.permute(0, 2, 1)).permute(0, 2, 1)
         # mainstream = self.mainstream_norm(mainstream.permute(0, 2, 1)).permute(0, 2, 1)
         # index = self.index_norm(index.permute(0, 2, 1)).permute(0, 2, 1)
-        
         y_tilde, _ = self.lstm(mainstream)
-
+        pcorr, ncorr = corr[:, :nP], corr[:, nP:nP+nN]
+        
         Xps = []
         for i_feature in range(nP):
             Xpi, _ = self.lstm(swdf[:, :, i_feature].unsqueeze(2))
             Xps.append(Xpi)
-        p_tilde = torch.stack(Xps).mean(axis=0)
+        Xps = torch.stack(Xps)
 
         Xns = []
         for i_feature in range(nP, nP+nN):
             Xni, _ = self.lstm(swdf[:, :,i_feature].unsqueeze(2))
             Xns.append(Xni)
-        n_tilde = torch.stack(Xns).mean(axis=0)
+        Xns = torch.stack(Xns)
+
+        if corr_control == 'threshold':
+            pth, nth = corr_threshold['p_threshold'], corr_threshold['n_threshold']
+            pcorr[pcorr >= pth] = 1
+            pcorr[pcorr < pth] = 0
+            ncorr[ncorr <= nth] = 1
+            ncorr[ncorr > nth] = 0
+        elif corr_control == 'prop':
+            pcorr, ncorr = torchf.normalize(pcorr, p=1, dim=1), torchf.normalize(ncorr, p=1, dim=1)
+
+        if corr_control is not None:
+            Xps = Xps.permute(2, 3, 1, 0)
+            Xps = Xps * torch.abs(pcorr)
+            Xps = Xps.permute(3, 2, 0, 1)
+
+            Xns = Xns.permute(2, 3, 1, 0)
+            Xns = Xns * torch.abs(ncorr)
+            Xns = Xns.permute(3, 2, 0, 1)
+
+        p_tilde = Xps.mean(axis=0)
+        n_tilde = Xns.mean(axis=0)
         
         index_tilde, _ = self.lstm(index)
         # print(y_tilde.shape, p_tilde.shape, n_tilde.shape, index_tilde.shape)
@@ -456,7 +495,7 @@ class NeuralNetwork(nn.Module):
 # In[14]:
 
 
-def cross_validate(dataloader, model, loss_fn, optimizer, test_size):
+def cross_validate(dataloader, model, loss_fn, optimizer, test_size, corr_control=None, corr_threshold=None):
     train_mse_record = []
     train_mape_record = []
     train_weights = []
@@ -467,10 +506,10 @@ def cross_validate(dataloader, model, loss_fn, optimizer, test_size):
 
 
     for i, sample in enumerate(dataloader):
-        swdf, mainstream, index, y_act = sample
-        swdf, mainstream, index, y_act = swdf.float(), mainstream.float(), index.float(), y_act.float()
-        swdf_tr, swdf_ts, mainstream_tr, mainstream_ts, index_tr, index_ts, y_act_tr, y_act_ts = train_test_split(swdf, mainstream, index, y_act, test_size=test_size)
-        pred = model(swdf_tr, mainstream_tr, index_tr, dataloader.dataset.nP, dataloader.dataset.nN)
+        swdf, corr, mainstream, index, y_act = sample
+        swdf, corr, mainstream, index, y_act = swdf.float(), corr.float(), mainstream.float(), index.float(), y_act.float()
+        swdf_tr, swdf_ts, corr_tr, corr_ts, mainstream_tr, mainstream_ts, index_tr, index_ts, y_act_tr, y_act_ts = train_test_split(swdf, corr, mainstream, index, y_act, test_size=test_size)
+        pred = model(swdf_tr, corr_tr, mainstream_tr, index_tr, dataloader.dataset.nP, dataloader.dataset.nN)
         loss = loss_fn(pred, y_act_tr)
         mape = torch.mean((torch.abs((y_act_tr - pred) / y_act_tr)) * 100)
         
@@ -485,7 +524,7 @@ def cross_validate(dataloader, model, loss_fn, optimizer, test_size):
         # Evaluation
         model.eval()
         with torch.no_grad():
-            pred = model(swdf_ts, mainstream_ts, index_ts, dataloader.dataset.nP, dataloader.dataset.nN)
+            pred = model(swdf_ts, corr_ts, mainstream_ts, index_ts, dataloader.dataset.nP, dataloader.dataset.nN, corr_control, corr_threshold)
             loss = loss_fn(pred, y_act_ts)
             mape = torch.mean((torch.abs((y_act_ts - pred) / y_act_ts)) * 100)
             test_mse_record.append(loss.item())
@@ -496,7 +535,7 @@ def cross_validate(dataloader, model, loss_fn, optimizer, test_size):
 
 
 def eval_cv(dataset_path, batch_size, keep_features, hidden_sz1, hidden_sz2, hidden_sz_lin1, hidden_sz_lin2, hidden_sz_lin3,
-                  learning_rate, epochs, clip_gradients=False):
+                  learning_rate, epochs, clip_gradients=False, corr_control=None, corr_threshold=None, save_comment=''):
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using {device} device")
@@ -519,7 +558,8 @@ def eval_cv(dataset_path, batch_size, keep_features, hidden_sz1, hidden_sz2, hid
     mape_ts_epochs = []
 
     for i_epoch in range(epochs):
-        mse_tr, mape_tr, mse_ts, mape_ts = cross_validate(dataloader, model, loss_fn, optimizer, test_size=0.2)
+        mse_tr, mape_tr, mse_ts, mape_ts = cross_validate(dataloader, model, loss_fn, optimizer, test_size=0.2, 
+        corr_control=corr_control, corr_threshold=corr_threshold)
         mse_tr_epochs.append(mse_tr)
         mape_tr_epochs.append(mape_tr)
         mse_ts_epochs.append(mse_ts)
@@ -538,9 +578,9 @@ def eval_cv(dataset_path, batch_size, keep_features, hidden_sz1, hidden_sz2, hid
     last_mape_tr = mape_tr_epochs[-1]
     last_mape_ts = mape_ts_epochs[-1]
 
-    with open('results_cv.csv', 'a', newline='') as csvfile:
+    with open('results_cv_corr_control_itc.csv', 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, delimiter=',')
-        writer.writerow([datetime.datetime.now(), last_mse_tr, last_mse_ts, last_mape_tr, last_mape_ts, min_mse_tr, min_mse_ts, min_mape_ts, min_mape_ts, nP, nN, epochs, learning_rate, dataset_path])
+        writer.writerow([datetime.datetime.now(), last_mse_tr, last_mse_ts, last_mape_tr, last_mape_ts, min_mse_tr, min_mse_ts, min_mape_ts, min_mape_ts, nP, nN, epochs, learning_rate, save_comment, dataset_path])
         
     print("Results file updated.")
  
@@ -570,7 +610,6 @@ def train(dataloader, model, loss_fn, optimizer):
 
     return mse_record, mape_record
 
-
 def test_loop(dataloader, model, loss_fn):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
@@ -590,12 +629,7 @@ def test_loop(dataloader, model, loss_fn):
     
     return mse_record, mape_record
             
-    
-            
-
-
 # In[15]:
-
 
 def train_and_test(train_dataset_path, test_datset_path, batch_size, keep_features, 
                   hidden_sz1, hidden_sz2, hidden_sz_lin1, hidden_sz_lin2, hidden_sz_lin3,
@@ -648,11 +682,15 @@ def train_and_test(train_dataset_path, test_datset_path, batch_size, keep_featur
     return mse_test, mape_test
     
 
-
 # In[16]:
+list_nP = [50, 100, 150]
+list_normalize = ['min-max']
+list_corr_threshold = [
+{'p_threshold' : 0.2,'n_threshold' : -0.2},
+{'p_threshold' : 0,'n_threshold' : -0}]
 
 
-for nP in [2, 4, 8, 10, 15, 20, 50, 100, 120, 166]:
+for nP, normalize, corr_threshold in itertools.product(list_nP, list_normalize, list_corr_threshold):
     nN = nP
     # nP = 10
     # nN = 10
@@ -671,8 +709,11 @@ for nP in [2, 4, 8, 10, 15, 20, 50, 100, 120, 166]:
     # i should be (len_corr_traceback)th day in the test_dataloader.
     # test_start_date = '2021-05-13'
     # test_end_date = None
-    normalize = 'min-max'
+    # normalize = 'min-max'
     # normalize = None
+    normalize_target = False
+    corr_control = 'threshold'
+    # corr_threshold = {'p_threshold' : 0.9,'n_threshold' : -0.9}
 
     dataset = NSEDataset(ohlcv_dir=ohlcv_dir, 
                          target_ticker=target_ticker, 
@@ -684,7 +725,8 @@ for nP in [2, 4, 8, 10, 15, 20, 50, 100, 120, 166]:
                          keep_feat=keep_feat, 
                          start_date=start_date,
                          end_date=end_date,
-                         normalize=normalize)
+                         normalize=normalize,
+                         normalize_target=False)
 
     # test_dataset = NSEDataset(ohlcv_dir=ohlcv_dir, 
     #                      target_ticker=target_ticker, 
@@ -699,24 +741,33 @@ for nP in [2, 4, 8, 10, 15, 20, 50, 100, 120, 166]:
     #                      normalize=normalize)
 
     end_date_str = end_date[:7] if end_date is not None else 'full'
-
-    dataset_path = 'data_collection/pickled_datasets/{}_Normalized_{}_{}_{}_w{}_t{}_p{}_n{}_{}.pkl'.format(
-    normalize, target_ticker[:-3], start_date[:7], end_date_str, len_window, len_corr_traceback, nP, nN, keep_feat)
+    if corr_control is None:
+        corr_control_str = 'NoCorrControl'
+    elif corr_control == 'prop':
+        corr_control_str = 'PropCorrControl'
+    else:
+        corr_control_str = 'Th{}_{}'.format(corr_threshold['p_threshold'], corr_threshold['n_threshold'])
+    dataset_path = 'data_collection/pickled_datasets/{}_Normalized_targetNorm{}_{}_{}_{}_{}_w{}_t{}_p{}_n{}_{}.pkl'.format(
+    normalize, normalize_target, corr_control_str, target_ticker[:-3], start_date[:7], end_date_str, len_window, len_corr_traceback, nP, nN, keep_feat)
 
     save_NSEDataset(dataset, dataset_path)
 
-    batch_size = 512
+    batch_size = 256
     keep_features = 'o'
-    hidden_sz1 = 64
-    hidden_sz2 = 64
+    hidden_sz1 = 128
+    hidden_sz2 = 256
     hidden_sz_lin1 = 64
     hidden_sz_lin2 = 32
     hidden_sz_lin3 = 1
-    learning_rate = 0.001
-    epochs = 20
+    learning_rate = 0.0005
+    epochs = 40
+    save_comment = "hs1{}_hs2{}_hslin1{}_hslin2{}_hslin3{}_lr{}_epochs{}".format(
+        hidden_sz1, hidden_sz2, hidden_sz_lin1, hidden_sz_lin2, hidden_sz_lin3, learning_rate, epochs
+    )
 
     eval_cv(dataset_path, batch_size, keep_features, hidden_sz1, hidden_sz2, hidden_sz_lin1, hidden_sz_lin2, hidden_sz_lin3,
-    learning_rate, epochs, clip_gradients=False)
+    learning_rate, epochs, clip_gradients=False, corr_control=corr_control,
+                         corr_threshold=corr_threshold, save_comment=save_comment)
 
     # train_and_test(train_dataset_path, test_dataset_path, batch_size, keep_features, 
     #                   hidden_sz1, hidden_sz2, hidden_sz_lin1, hidden_sz_lin2, hidden_sz_lin3,
@@ -732,4 +783,4 @@ for nP in [2, 4, 8, 10, 15, 20, 50, 100, 120, 166]:
 #                   learning_rate, epochs, clip_gradients=False);
 
 # eval_cv(dataset_path, batch_size, keep_features, hidden_sz1, hidden_sz2, hidden_sz_lin1, hidden_sz_lin2, hidden_sz_lin3,
-                #   learning_rate, epochs, clip_gradients=False):
+                #   learning_rate, epochs, clip_gradients=False):torch.stack(Xns)
