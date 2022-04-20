@@ -53,6 +53,15 @@ def get_labels(cls : pd.Series):
     return move_dir, cls_tmrw
 
 def slide_and_flatten(X, window_len):
-    Xsw = sliding_window_view(X, (window_len, X.shape[1])).squeeze()
+    Xsw = sliding_window_view(X, (window_len, X.shape[1]))
+    Xsw = Xsw.squeeze()
+    if len(Xsw.shape) == 2:
+        return Xsw
     return Xsw.reshape(Xsw.shape[0], Xsw.shape[1]*Xsw.shape[2])
     
+def merge_in_one(row):
+    res = []
+    for e in row:
+        res.extend(e)
+
+    return res

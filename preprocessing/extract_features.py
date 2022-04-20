@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import sklearn as sk
 from numpy.lib.stride_tricks import sliding_window_view
+from preprocessing.wrangling import merge_in_one
 from preprocessing.denoising import wavelet_denoising
 from numpy import mean, absolute
 import ta
@@ -85,4 +86,4 @@ def get_wavelet_coeffs(x, len_window, axis=1, decomp_level=1):
     xdf = sliding_window_view(x, (len_window), writeable=True)
     x_swdf = pd.DataFrame.from_records(xdf)
     x_swdf_sm_coeff = x_swdf.apply(wavelet_denoising, axis=axis, decomp_level=decomp_level)
-    return np.stack(x_swdf_sm_coeff.apply(lambda row : np.array(row[1]).flatten()))
+    return x_swdf_sm_coeff.apply(lambda row : np.array(merge_in_one(row[1])))
