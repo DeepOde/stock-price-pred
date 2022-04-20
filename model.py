@@ -509,6 +509,7 @@ def cross_validate(dataloader, model, loss_fn, optimizer, test_size, corr_contro
         swdf, corr, mainstream, index, y_act = sample
         swdf, corr, mainstream, index, y_act = swdf.float(), corr.float(), mainstream.float(), index.float(), y_act.float()
         swdf_tr, swdf_ts, corr_tr, corr_ts, mainstream_tr, mainstream_ts, index_tr, index_ts, y_act_tr, y_act_ts = train_test_split(swdf, corr, mainstream, index, y_act, test_size=test_size)
+
         pred = model(swdf_tr, corr_tr, mainstream_tr, index_tr, dataloader.dataset.nP, dataloader.dataset.nN)
         loss = loss_fn(pred, y_act_tr)
         mape = torch.mean((torch.abs((y_act_tr - pred) / y_act_tr)) * 100)
@@ -521,6 +522,7 @@ def cross_validate(dataloader, model, loss_fn, optimizer, test_size, corr_contro
         train_mape_record.append(mape.item())
         train_weights.append(len(swdf_tr))
 
+        print('i ', i)
         # Evaluation
         model.eval()
         with torch.no_grad():
@@ -660,6 +662,7 @@ def train_and_test(train_dataset_path, test_datset_path, batch_size, keep_featur
         mse_epochs.append(mse_[-1])
         mape_record.extend(mape_)
         mape_epochs.append(mape_[-1])
+        print("Epoch {} completed.".format(i_epoch+1))
         
     print("Training completed for {}".format(train_dataset_path))
     
@@ -686,6 +689,7 @@ def train_and_test(train_dataset_path, test_datset_path, batch_size, keep_featur
 list_nP = [50, 100, 150]
 list_normalize = ['min-max']
 list_corr_threshold = [
+{'p_threshold' : 0.75,'n_threshold' : -0.75},
 {'p_threshold' : 0.2,'n_threshold' : -0.2},
 {'p_threshold' : 0,'n_threshold' : -0}]
 
@@ -755,12 +759,12 @@ for nP, normalize, corr_threshold in itertools.product(list_nP, list_normalize, 
     batch_size = 256
     keep_features = 'o'
     hidden_sz1 = 128
-    hidden_sz2 = 256
+    hidden_sz2 = 64
     hidden_sz_lin1 = 64
     hidden_sz_lin2 = 32
     hidden_sz_lin3 = 1
     learning_rate = 0.0005
-    epochs = 40
+    epochs = 30
     save_comment = "hs1{}_hs2{}_hslin1{}_hslin2{}_hslin3{}_lr{}_epochs{}".format(
         hidden_sz1, hidden_sz2, hidden_sz_lin1, hidden_sz_lin2, hidden_sz_lin3, learning_rate, epochs
     )

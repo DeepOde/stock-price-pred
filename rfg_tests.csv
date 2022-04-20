@@ -1,0 +1,5 @@
+time,model,comment,mean_squared_error,mean_absolute_percentage_error,r2_score
+2022-04-19 23:52:31.045773,"Pipeline(steps=[('selectfrommodel',
+                 SelectFromModel(estimator=Lasso(max_iter=4000))),
+                ('robustscaler', RobustScaler()),
+                ('randomforestregressor', RandomForestRegressor())])",df_30_1,8.922329866453758,0.022356264115386628,0.9885921553751191
