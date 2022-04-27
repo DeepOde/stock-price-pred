@@ -1,0 +1,84 @@
+2022-04-28 03:27:27.792399,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,8244638.738059335,0.27363763323812684,0.6943051209611543
+2022-04-28 03:27:27.792399,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,8244638.738059335,0.27363763323812684,0.6943051209611543
+2022-04-28 03:30:24.570060,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,7277.576782175989,0.07460629992300571,0.7872628882248576
+2022-04-28 03:27:27.792399,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,8244638.738059335,0.27363763323812684,0.6943051209611543
+2022-04-28 03:30:24.570060,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,7277.576782175989,0.07460629992300571,0.7872628882248576
+2022-04-28 03:33:25.671181,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,197728.5486680622,0.12463304060256043,0.4891392047431181
+2022-04-28 03:27:27.792399,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,8244638.738059335,0.27363763323812684,0.6943051209611543
+2022-04-28 03:30:24.570060,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,7277.576782175989,0.07460629992300571,0.7872628882248576
+2022-04-28 03:33:25.671181,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,197728.5486680622,0.12463304060256043,0.4891392047431181
+2022-04-28 03:36:24.975579,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,7871.682048644797,0.09570903563280857,0.5949818210336589
+2022-04-28 03:27:27.792399,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,8244638.738059335,0.27363763323812684,0.6943051209611543
+2022-04-28 03:30:24.570060,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,7277.576782175989,0.07460629992300571,0.7872628882248576
+2022-04-28 03:33:25.671181,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,197728.5486680622,0.12463304060256043,0.4891392047431181
+2022-04-28 03:36:24.975579,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,7871.682048644797,0.09570903563280857,0.5949818210336589
+2022-04-28 03:39:21.623482,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,660.3361581601991,0.06642713441391693,0.8896515595056758
+2022-04-28 03:27:27.792399,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,8244638.738059335,0.27363763323812684,0.6943051209611543
+2022-04-28 03:30:24.570060,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,7277.576782175989,0.07460629992300571,0.7872628882248576
+2022-04-28 03:33:25.671181,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,197728.5486680622,0.12463304060256043,0.4891392047431181
+2022-04-28 03:36:24.975579,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,7871.682048644797,0.09570903563280857,0.5949818210336589
+2022-04-28 03:39:21.623482,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,660.3361581601991,0.06642713441391693,0.8896515595056758
+2022-04-28 03:42:31.109840,"LSTMBaseline(
+  (lstm): LSTM(5, 64, batch_first=True)
+  (dense): Linear(in_features=64, out_features=1, bias=True)
+)",,2453.360412704414,0.08285619914581384,0.7727540756739325
