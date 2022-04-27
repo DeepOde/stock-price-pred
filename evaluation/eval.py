@@ -17,7 +17,9 @@ def sliding_window_cv_regression(X, y, pipe, n_tr, n_ts=1, scorers=[], comment="
     agg_results = {}
     if post_processor is not None:
         post_processor_f, post_processor_args = post_processor[0], post_processor[1]
-        
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using {device} device")
 
     for i_tr_start in range(0, len(X)-(n_tr+n_ts)):
         # The last i_ts_end should be len(X).
