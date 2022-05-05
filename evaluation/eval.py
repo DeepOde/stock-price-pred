@@ -104,8 +104,6 @@ def all_stock_estimator_test(list_dir, list_prefix, list_suffix, save_dir, save_
                         
                         unflattened_df_cls = df['Close']
                         df.drop(drop_columns, axis=1, inplace=True)
-                        print(drop_columns, df.columns)
-                        return
 
                         unflattened_df_index = df.index
                         df = slide_and_flatten(df, window_len=len_window)
