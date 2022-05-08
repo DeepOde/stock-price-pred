@@ -66,7 +66,7 @@ def sliding_window_cv_regression(X, y, pipe, n_tr, n_ts=1, scorers=[], comment="
     return agg_results
 
 def all_stock_estimator_test(list_dir, list_prefix, list_suffix, save_dir, save_prefix, save_suffix, results_file, estimator,
- n_tr, n_ts=1, scorers=[], len_window=10, keep_features=None, comment='', start_date="2017-01-01", end_date=None):
+ n_tr, n_ts=1, scorers=[], len_window=10, keep_features=None, comment='', start_date="2017-01-01", end_date=None, post_process=True):
     results = []
 
     if keep_features is None:  # If features is None, use all features.
@@ -75,73 +75,75 @@ def all_stock_estimator_test(list_dir, list_prefix, list_suffix, save_dir, save_
     # i = 0
     for f in os.listdir(list_dir):
         if f.startswith(list_prefix) and f.endswith(list_suffix):
-                savefile = os.path.join(save_dir, save_prefix+f[9:-8]+save_suffix)
-                listfile = os.path.join(list_dir, f)
-                p = pd.read_csv(listfile)
-                symbols = list(p['Symbol'].values + '.NS')
-                for symbol in symbols:
-                    # if i == 2:
-                    #     break
-                    # i += 1
-                    try:
-                        end_date_str = end_date if end_date is not None else 'full'
-                        comment = comment + symbol + '_' + start_date + '_' + end_date_str + '_' + 'wl' + str(len_window) + '_' + 'tr' + str(n_tr) + '_' + 'ts' + str(n_ts)
-                        df = get_indi_df(symbol, ohlcvfile=savefile, start_date=start_date)
-                        move_dir_target, cls_target = get_labels(df['Close'])
-                        df = df.iloc[:-1]
-                        cls_target = cls_target.iloc[:-1]
-                        
-                        drop_columns = ['Date', 'Adj Close']
-                        if 'ta' in keep_features:
-                            df = get_all_ta_features(df)
-                        if 'ohlcv' not in keep_features:
-                            drop_columns.extend(['Open', 'High', 'Low', 'Close', 'Volume'])
-                        if 'wavelet' in keep_features:
-                            df_wavelet = get_wavelet_coeffs(df['Close'], len_window=len_window, decomp_level=2)
-                            df_wavelet = pd.DataFrame.from_records(df_wavelet, index=df.index)
-                            df = df.merge(df_wavelet, left_index=True, right_index=True)
+            savefile = os.path.join(save_dir, save_prefix+f[9:-8]+save_suffix)
+            listfile = os.path.join(list_dir, f)
+            p = pd.read_csv(listfile)
+            symbols = list(p['Symbol'].values + '.NS')
+            for symbol in symbols:
+                # if i == 2:
+                #     break
+                # i += 1
+                end_date_str = end_date if end_date is not None else 'full'
+                comment = comment + symbol + '_' + start_date + '_' + end_date_str + '_' + 'wl' + str(len_window) + '_' + 'tr' + str(n_tr) + '_' + 'ts' + str(n_ts)
+                df = get_indi_df(symbol, ohlcvfile=savefile, start_date=start_date)
+                move_dir_target, cls_target = get_labels(df['Close'])
+                df = df.iloc[:-1]
+                unflattened_df_cls = df['Close']
+                cls_target = cls_target.iloc[:-1]
+                
+                drop_columns = ['Date', 'Adj Close']
+                if 'ta' in keep_features:
+                    df = get_all_ta_features(df)
+                if 'ohlcv' not in keep_features:
+                    drop_columns.extend(['Open', 'High', 'Low', 'Close', 'Volume'])
+                
+                
+                df.drop(drop_columns, axis=1, inplace=True)
 
-                        
-                        unflattened_df_cls = df['Close']
-                        df.drop(drop_columns, axis=1, inplace=True)
+                unflattened_df_index = df.index
+                df = slide_and_flatten(df, window_len=len_window)
+                df = pd.DataFrame(df, index=unflattened_df_index[(len_window-1):])
+                if 'wavelet' in keep_features:
+                    df_wavelet = get_wavelet_coeffs(unflattened_df_cls, len_window=len_window, decomp_level=2)
+                    df_wavelet = pd.DataFrame.from_records(df_wavelet, index=df.index)
+                    df = df.merge(df_wavelet, left_index=True, right_index=True)
 
-                        unflattened_df_index = df.index
-                        df = slide_and_flatten(df, window_len=len_window)
-                        df = pd.DataFrame(df, index=unflattened_df_index[(len_window-1):])
-                        
-                        # y = cls_target - df['Close']
-                        y = cls_target[(len_window-1):] - unflattened_df_cls.iloc[(len_window-1):]
-                        # y30 = cls_target[29:] - df['Close'].iloc[29:]
-                        # y60 = cls_target[59:] - df['Close'].iloc[59:]
-                        
-                        # df30 = slide_and_flatten(df, window_len=30)
-                        # df30 = pd.DataFrame(df30, index=df.index[29:])
-                        # df60 = slide_and_flatten(df, window_len=60)
-                        # df60 = pd.DataFrame(df60, index=df.index[59:])
+                # y = cls_target - df['Close']
+                y = cls_target[(len_window-1):] - unflattened_df_cls.iloc[(len_window-1):]
+                # y30 = cls_target[29:] - df['Close'].iloc[29:]
+                # y60 = cls_target[59:] - df['Close'].iloc[59:]
+                
+                # df30 = slide_and_flatten(df, window_len=30)
+                # df30 = pd.DataFrame(df30, index=df.index[29:])
+                # df60 = slide_and_flatten(df, window_len=60)
+                # df60 = pd.DataFrame(df60, index=df.index[59:])
 
-                        # df10_wavelet = get_wavelet_coeffs(df['Close'], len_window=10, decomp_level=2)
-                        # df10_wavelet = pd.DataFrame.from_records(df10_wavelet, index=df10.index)
-                        # df30_wavelet = get_wavelet_coeffs(df['Close'], len_window=30, decomp_level=2)
-                        # df30_wavelet = pd.DataFrame.from_records(df30_wavelet, index=df30.index)
-                        # df60_wavelet = get_wavelet_coeffs(df['Close'], len_window=60, decomp_level=2)
-                        # df60_wavelet = pd.DataFrame.from_records(df60_wavelet, index=df60.index)
+                # df10_wavelet = get_wavelet_coeffs(df['Close'], len_window=10, decomp_level=2)
+                # df10_wavelet = pd.DataFrame.from_records(df10_wavelet, index=df10.index)
+                # df30_wavelet = get_wavelet_coeffs(df['Close'], len_window=30, decomp_level=2)
+                # df30_wavelet = pd.DataFrame.from_records(df30_wavelet, index=df30.index)
+                # df60_wavelet = get_wavelet_coeffs(df['Close'], len_window=60, decomp_level=2)
+                # df60_wavelet = pd.DataFrame.from_records(df60_wavelet, index=df60.index)
 
-                        # df = df.merge(df_wavelet, left_index=True, right_index=True)
-                        # df30 = df30.merge(df30_wavelet, left_index=True, right_index=True)
-                        # df60 = df60.merge(df60_wavelet, left_index=True, right_index=True)
+                # df = df.merge(df_wavelet, left_index=True, right_index=True)
+                # df30 = df30.merge(df30_wavelet, left_index=True, right_index=True)
+                # df60 = df60.merge(df60_wavelet, left_index=True, right_index=True)
 
-                        post_processor = (add_closing_price, {'cls_price':unflattened_df_cls.iloc[(len_window-1):len(unflattened_df_cls)-(n_tr+n_ts)]})
-                        result = sliding_window_cv_regression(df, y, estimator, n_tr, n_ts, scorers, comment=comment, post_processor=post_processor)
-                        results.append(result)
-                        print("Result obtained for {}".format(symbol))
-                    except Exception as e:
-                        print("An error occured while testing on a stock {}".format(symbol))
-                        print(e)
-                        print("Skipped.")
+                
+                if post_process:
+                    post_processor = (add_closing_price, {'cls_price':unflattened_df_cls.iloc[(len_window-1):len(unflattened_df_cls)-(n_tr+n_ts)]})
+                result = sliding_window_cv_regression(df, y, estimator, n_tr, n_ts, scorers, comment=comment, post_processor=post_processor)
+                results.append(result)
+                print("Result obtained for {}".format(symbol))
+                # except Exception as e:
+                #     print("An error occured while testing on a stock {}".format(symbol))
+                #     print(e)
+                #     print("Skipped.")
 
     if results_file is not None:
         file_exists = os.path.isfile(results_file)
     
+    print(results)
     with open(results_file, 'a', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=results[0].keys(), delimiter=',', lineterminator='\n')
 
