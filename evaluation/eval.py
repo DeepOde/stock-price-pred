@@ -140,19 +140,19 @@ def all_stock_estimator_test(list_dir, list_prefix, list_suffix, save_dir, save_
                 #     print(e)
                 #     print("Skipped.")
 
-    if results_file is not None:
-        file_exists = os.path.isfile(results_file)
-    
-    print(results)
-    with open(results_file, 'a', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=results[0].keys(), delimiter=',', lineterminator='\n')
+                if results_file is not None:
+                    file_exists = os.path.isfile(results_file)
+                
+                with open(results_file, 'a', newline='') as f:
+                    writer = csv.DictWriter(f, fieldnames=results[0].keys(), delimiter=',', lineterminator='\n')
 
-        if not file_exists:
-            writer.writeheader()  # file doesn't exist yet, write a header
+                    if not file_exists:
+                        writer.writeheader()  # file doesn't exist yet, write a header
 
-        writer.writerows(results)
+                    writer.writerows([result])
 
-    print("Completed all stocks test.")                    
+    print("Completed all stocks test.")        
+    return results            
 
 
 
