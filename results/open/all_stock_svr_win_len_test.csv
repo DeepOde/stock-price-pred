@@ -1,0 +1,3 @@
+time,model,comment,mean_squared_error,mean_absolute_percentage_error,r2_score
+2022-05-15 16:37:21.059576,"Pipeline(steps=[('robustscaler', RobustScaler()), ('svr', SVR())])",ohlcv_AMARAJABAT.NS_2015-01-01_full_wl30_tr300_ts1,244.3955746938382,0.014233371108836717,0.9811058495402417
+2022-05-15 16:38:36.418851,"Pipeline(steps=[('robustscaler', RobustScaler()), ('svr', SVR())])",ohlcv_AMARAJABAT.NS_2015-01-01_full_wl30_tr300_ts1ASHOKLEY.NS_2015-01-01_full_wl30_tr300_ts1,7.494118535619375,0.023053071847669745,0.9872708872440947
