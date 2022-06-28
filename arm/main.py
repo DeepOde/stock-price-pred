@@ -16,20 +16,21 @@ if __name__ == "__main__":
     else:
         df = pd.read_csv(encoded_csv_path)
 
-    # if 'Unnamed: 0' in df.columns:
-    #     df.drop('Unnamed: 0', axis=1, inplace=True)
-    # if 'Date' in df.columns:
-    #     df.drop('Date', axis=1, inplace=True)
-    # df.head()
-    #
-    # # Find and Save Frequent Itemsets. Don't run if already saved.
-    # frequent_itemsets_ap = apriori(df, min_support=0.01, use_colnames=True)
-    # frequent_itemsets_ap.to_csv('frequent_with_support_1perc.csv')
-    #
-    # # Load saved frequent itemsets and mine association rules.
-    # # Don't run if already mined.
-    # frequent_itemsets_ap = pd.read_csv('frequent_with_support_1perc.csv')
-    # rules_ap = association_rules(frequent_itemsets_ap, metric="confidence", min_threshold=0.75)
-    #
-    # rules_ap.sort_values(by='confidence', ascending=False, inplace=True)
-    # rules_ap.to_csv('ar_with_conf_75perc.csv')
+    if 'Unnamed: 0' in df.columns:
+        df.drop('Unnamed: 0', axis=1, inplace=True)
+    if 'Date' in df.columns:
+        df.drop('Date', axis=1, inplace=True)
+    df.fillna(value=False, inplace=True)
+    
+    
+    # Find and Save Frequent Itemsets. Don't run if already saved.
+    frequent_itemsets_ap = apriori(df, min_support=0.2, use_colnames=True)
+    frequent_itemsets_ap.to_csv('frequent_with_support_2perc.csv')
+    
+    # Load saved frequent itemsets and mine association rules.
+    # Don't run if already mined.
+    frequent_itemsets_ap = pd.read_csv('frequent_with_support_2perc.csv')
+    rules_ap = association_rules(frequent_itemsets_ap, metric="confidence", min_threshold=0.90)
+    
+    rules_ap.sort_values(by='confidence', ascending=False, inplace=True)
+    rules_ap.to_csv('ar_with_conf_90perc.csv')

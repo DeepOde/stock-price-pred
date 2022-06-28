@@ -50,7 +50,7 @@ def get_labels(cls : pd.Series):
     move_dir[cls_tmrw <= cls] = -1
     move_dir[0] = np.nan
     move_dir[-1] = np.nan
-    return move_dir, cls_tmrw
+    return move_dir[1:-1], cls_tmrw
 
 def slide_and_flatten(X, window_len):
     Xsw = sliding_window_view(X, (window_len, X.shape[1]))
