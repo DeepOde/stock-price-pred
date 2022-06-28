@@ -1,3 +1,4 @@
+from fileinput import close
 import pmdarima as pm
 from pmdarima.model_selection import train_test_split
 import numpy as np
@@ -5,10 +6,21 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import sklearn as sk
 from numpy.lib.stride_tricks import sliding_window_view
+from preprocessing.wrangling import merge_in_one
+from preprocessing.denoising import wavelet_denoising
 from numpy import mean, absolute
+import ta
+
+def get_all_ta_features(df, name_open="Open", name_high="High", name_low="Low", name_close="Close", name_volume="Volume",
+fillna=True):
+    df = ta.utils.dropna(df)
+    df = ta.add_all_ta_features(df, open=name_open, high=name_high, low=name_low, close=name_close, volume=name_volume, fillna=fillna)
+
+    return df
 
 
 def extract_ta_features(closing, high, low, volume, nd_ma=10, nd_momentum=10, nd_k=14, nd_d=3, nd_cci=20):
+    'Depracted. Use get_all_ta_features instead.'
     window_ma = sliding_window_view(closing, window_shape=nd_ma)
     ma = pd.Series(
         np.pad(np.average(window_ma, axis=1), pad_width=(nd_ma - 1, 0), mode='constant', constant_values=np.nan))
@@ -68,3 +80,10 @@ def extract_ta_features(closing, high, low, volume, nd_ma=10, nd_momentum=10, nd
     cci = (typ_price - ma_tp) / (0.015 * ma_tp_d)
 
     return ma, wma, momentum, stochK, stochD, rsi, macd, larryR, adl, cci
+
+def get_wavelet_coeffs(x, len_window, axis=1, decomp_level=1):
+    x = pd.Series(x)
+    xdf = sliding_window_view(x, (len_window), writeable=True)
+    x_swdf = pd.DataFrame.from_records(xdf)
+    x_swdf_sm_coeff = x_swdf.apply(wavelet_denoising, axis=axis, decomp_level=decomp_level)
+    return x_swdf_sm_coeff.apply(lambda row : np.array(merge_in_one(row[1])))
