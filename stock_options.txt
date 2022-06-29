@@ -1,0 +1,12 @@
+<option value="AXISBANK">AXISBANK</option>
+<option value="BAJAJFINSV">BAJAJFINSV</option>
+<option value="BAJFINANCE">BAJFINANCE</option>
+<option value="CHOLAFIN">CHOLAFIN</option>
+<option value="HDFCAMC">HDFCAMC</option>
+<option value="HDFCBANK">HDFCBANK</option>
+<option value="RELAXO">RELAXO</option>
+<option value="TITAN">TITAN</option>
+<option value="TTKPRESTIG">TTKPRESTIG</option>
+<option value="VGUARD">VGUARD</option>
+<option value="VOLTAS">VOLTAS</option>
+<option value="WHIRLPOOL">WHIRLPOOL</option>

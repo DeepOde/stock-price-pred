@@ -1,73 +1,63 @@
 <!DOCTYPE html>
 <html>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+<script>
+
+var true_data = {};
+true_data['TCS'] = [7,9,9,9,9,9,10,11,14,14,15];
+true_data['STC'] = [7,8,9,8,9,9,10,11,14,14,15];
+
+function detectChange(selectButton) {
+    plt_true_data.data = true_data[selectButton.value];
+    chart.update();
+}
+
+</script>
+
 <body>
 <canvas id="myChart" style="width:100%;max-width:600px"></canvas>
+<select id="osDemo" onchange="detectChange(this)">
+    <option value="TCS">999</option>
+    <option value="STC">8989</option>
+</select>
 
-<!--
 <script>
 var xValues = [50,60,70,80,90,100,110,120,130,140,150];
 var yValues = [7,8,8,9,9,9,10,11,14,14,15];
 
-new Chart("myChart", {
+var plt_true_data = {
+	label: "Actual Price",
+    data: [7,8,8,9,9,9,10,11,14,14,15],
+    fill: false,
+    backgroundColor: "rgba(0, 0, 255, 1.0)",
+    borderColor: "rgba(0,0,255,0.1)",
+    tension: 0
+    };
+
+var plt_predicted_data = {
+	label: "Predicted Price",
+    data: [7.5,8.5,7.5,9.5,10,8.5,10.5,11,14.5,12.5,15],
+    fill: false,
+    backgroundColor: "rgba(0, 255, 0, 1.0)",
+    borderColor: "rgba(0, 255, 0, 0.1)",
+    tension: 0
+    };
+
+chart = new Chart("myChart", {
   type: "line",
   data: {
     labels: xValues,
-    datasets: [{
-      fill: false,
-      lineTension: 0,
-      backgroundColor: "rgba(0,0,255,1.0)",
-      borderColor: "rgba(0,0,255,0.1)",
-      data: yValues
-    }]
+    datasets: [plt_true_data, plt_predicted_data]
   },
   options: {
-    legend: {display: false},
+    legend: {display: true},
     scales: {
       yAxes: [{ticks: {min: 6, max:16}}],
     }
   }
 });
-</script>-->
-<!--<canvas id="myChart" width="400" height="400"></canvas>-->
-<script>
-const ctx = document.getElementById('myChart');
-const myChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-        labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
-        datasets: [{
-            label: '# of Votes',
-            data: [12, 19, 3, 5, 2, 3],
-            backgroundColor: [
-                'rgba(255, 99, 132, 0.2)',
-                'rgba(54, 162, 235, 0.2)',
-                'rgba(255, 206, 86, 0.2)',
-                'rgba(75, 192, 192, 0.2)',
-                'rgba(153, 102, 255, 0.2)',
-                'rgba(255, 159, 64, 0.2)'
-            ],
-            borderColor: [
-                'rgba(255, 99, 132, 1)',
-                'rgba(54, 162, 235, 1)',
-                'rgba(255, 206, 86, 1)',
-                'rgba(75, 192, 192, 1)',
-                'rgba(153, 102, 255, 1)',
-                'rgba(255, 159, 64, 1)'
-            ],
-            borderWidth: 1
-        }]
-    },
-    options: {
-        scales: {
-            y: {
-                beginAtZero: true
-            }
-        }
-    }
-});
 </script>
- 
+
 </body>
 </html>
 

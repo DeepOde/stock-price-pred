@@ -8,10 +8,11 @@ def arm_ud_encoder(series):
     return u, d
 
 
-def arm_encoder(ohlcv_dir, savepath=None, ohlcv_prefix='', ohlcv_suffix='', verbose=False):
-    encoded_df = pd.DataFrame(columns=['Date', 'Ticker'])
+def arm_encoder(ohlcv_dir, save_dir=None, save_prefix='', save_suffix='.csv', ohlcv_prefix='', ohlcv_suffix='', verbose=False):
     for file in os.listdir(ohlcv_dir):
         if file.startswith(ohlcv_prefix) and file.endswith(ohlcv_suffix):
+            sector = file[len(ohlcv_prefix):-len(ohlcv_suffix)]
+            encoded_df = pd.DataFrame(columns=['Date', 'Ticker'])
             df = pd.read_csv(os.path.join(ohlcv_dir, file), index_col='Date')
             df = df[df['Ticker'] == 'Adj Close']
 
@@ -28,9 +29,8 @@ def arm_encoder(ohlcv_dir, savepath=None, ohlcv_prefix='', ohlcv_suffix='', verb
                 if verbose:
                     print("Encoded {}".format(c))
 
-    if savepath is not None:
-        encoded_df.to_csv(savepath)
-        if verbose:
-            print("Saved {}.".format(savepath))
-
-    return encoded_df
+            if save_dir is not None:
+                savepath = os.path.join(save_dir, save_prefix+sector+save_suffix)
+                encoded_df.to_csv(savepath)
+                if verbose:
+                    print("Saved {}.".format(savepath))
