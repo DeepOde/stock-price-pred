@@ -1,5 +1,0 @@
-time,model,comment,mean_squared_error,mean_absolute_percentage_error,r2_score
-2022-04-21 00:14:06.171390,"Pipeline(steps=[('persistancemodel', PersistanceModel(persist_colname=Close))])",persistance_30_1,47.66665497758951,0.015589301950799023,0.9924499078649214
-2022-04-21 00:18:47.928597,"Pipeline(steps=[('selectfrommodel', SelectFromModel(estimator=Lasso())),
-                ('robustscaler', RobustScaler()),
-                ('randomforestregressor', RandomForestRegressor())])",df10_wavelet_30_1,57.218425740904316,0.017921459460034594,0.9913112415683032

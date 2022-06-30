@@ -1,3 +1,0 @@
-time,model,comment,mean_squared_error,mean_absolute_percentage_error,r2_score
-2022-04-27 13:38:07.171446,"Pipeline(steps=[('persistancemodel', PersistanceModel(persist_colname=Close))])",persistance_30_1,132.70875316378073,0.01213295872847907,0.9948915955887699
-2022-04-27 13:38:12.461328,"Pipeline(steps=[('minmaxscaler', MinMaxScaler()), ('svr', SVR())])",baseline_svm_30_1,1072.1077202179795,0.03332999915763471,0.9587309828725746
